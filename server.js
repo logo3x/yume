@@ -7,11 +7,10 @@ const initSqlJs = require("sql.js");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const IS_RENDER = process.env.RENDER === "true";
-const DATA_DIR = IS_RENDER ? "/data" : __dirname;
-const DB_PATH = path.join(DATA_DIR, "negocio.db");
-const BACKUP_DIR = path.join(DATA_DIR, "backups");
-const UPLOADS_DIR = path.join(DATA_DIR, "uploads");
+const BASE_DIR = __dirname;
+const DB_PATH = path.join(BASE_DIR, "negocio.db");
+const BACKUP_DIR = path.join(BASE_DIR, "backups");
+const UPLOADS_DIR = path.join(BASE_DIR, "uploads");
 
 let db;
 
@@ -468,10 +467,23 @@ app.use((req, res) => { if (req.path.startsWith("/api/")) res.status(404).json({
 app.use((err, req, res, next) => { console.error("Error:", err); res.status(500).json({ error: "Error interno del servidor" }); });
 
 async function startServer() {
-  if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true });
-  if (!fs.existsSync(BACKUP_DIR)) fs.mkdirSync(BACKUP_DIR, { recursive: true });
+  try {
+    if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+  } catch (e) { console.log("DATA_DIR exists or cannot be created:", e.message); }
+  try {
+    if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+  } catch (e) { console.log("UPLOADS_DIR exists or cannot be created:", e.message); }
+  try {
+    if (!fs.existsSync(BACKUP_DIR)) fs.mkdirSync(BACKUP_DIR, { recursive: true });
+  } catch (e) { console.log("BACKUP_DIR exists or cannot be created:", e.message); }
+  
   const SQL = await initSqlJs();
-  if (fs.existsSync(DB_PATH)) { const fileBuffer = fs.readFileSync(DB_PATH); db = new SQL.Database(fileBuffer); } else { db = new SQL.Database(); }
+  try {
+    if (fs.existsSync(DB_PATH)) { const fileBuffer = fs.readFileSync(DB_PATH); db = new SQL.Database(fileBuffer); } else { db = new SQL.Database(); }
+  } catch (e) {
+    console.log("DB error, creating new:", e.message);
+    db = new SQL.Database();
+  }
   initDb();
   app.listen(PORT, () => console.log(`Servidor corriendo en http://localhost:${PORT}`));
 }
