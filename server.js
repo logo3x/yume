@@ -457,6 +457,35 @@ app.get("/api/reports/summary", (req, res) => {
   res.json({ today, week, month, totalProfit, mostSold, leastSold, outOfStock, income, expense });
 });
 app.get("/api/reports/charts", (req, res) => res.json({ salesByMonth: getAll(`SELECT strftime('%Y-%m', sale_date) AS month, IFNULL(SUM(total_amount),0) AS total_sales, IFNULL(SUM(profit),0) AS total_profit FROM sales GROUP BY strftime('%Y-%m', sale_date) ORDER BY month`), topProducts: getAll("SELECT p.name, IFNULL(SUM(s.quantity),0) AS qty FROM products p LEFT JOIN sales s ON s.product_id = p.id GROUP BY p.id ORDER BY qty DESC LIMIT 10") }));
+
+app.get("/api/reports/filtered", (req, res) => {
+  const { start_date, end_date } = req.query;
+  let dateFilter = "";
+  let params = [];
+  if (start_date && end_date) {
+    dateFilter = " WHERE sale_date >= ? AND sale_date <= ?";
+    params = [start_date, end_date];
+  } else if (start_date) {
+    dateFilter = " WHERE sale_date >= ?";
+    params = [start_date];
+  } else if (end_date) {
+    dateFilter = " WHERE sale_date <= ?";
+    params = [end_date];
+  }
+  
+  const totalSales = getOne(`SELECT IFNULL(SUM(total_amount),0) AS v FROM sales${dateFilter}`, params)?.v || 0;
+  const totalProfit = getOne(`SELECT IFNULL(SUM(profit),0) AS v FROM sales${dateFilter}`, params)?.v || 0;
+  const totalQty = getOne(`SELECT IFNULL(SUM(quantity),0) AS v FROM sales${dateFilter}`, params)?.v || 0;
+  
+  const salesByDay = getAll(`SELECT sale_date AS day, IFNULL(SUM(total_amount),0) AS total_sales, IFNULL(SUM(profit),0) AS total_profit, IFNULL(SUM(quantity),0) AS total_qty FROM sales${dateFilter} GROUP BY sale_date ORDER BY sale_date`, params);
+  
+  const topProducts = getAll(`SELECT p.name, IFNULL(SUM(s.quantity),0) AS qty, IFNULL(SUM(s.total_amount),0) AS total FROM sales s JOIN products p ON p.id = s.product_id${dateFilter} GROUP BY p.id ORDER BY qty DESC LIMIT 10`, params);
+  
+  const cashIn = getOne(`SELECT IFNULL(SUM(amount),0) AS v FROM cash_movements WHERE type = 'Ingreso'${dateFilter.replace('sale_date', 'movement_date')}`, params)?.v || 0;
+  const cashOut = getOne(`SELECT IFNULL(SUM(amount),0) AS v FROM cash_movements WHERE type = 'Egreso'${dateFilter.replace('sale_date', 'movement_date')}`, params)?.v || 0;
+  
+  res.json({ totalSales, totalProfit, totalQty, salesByDay, topProducts, cashIn, cashOut });
+});
 app.get("/api/cash/summary", (req, res) => { const settings = getOne("SELECT * FROM settings WHERE id = 1"); const incomes = getOne("SELECT IFNULL(SUM(amount),0) AS v FROM cash_movements WHERE type = 'Ingreso'")?.v || 0; const expenses = getOne("SELECT IFNULL(SUM(amount),0) AS v FROM cash_movements WHERE type = 'Egreso'")?.v || 0; const current = Number(settings?.initial_investment || 0) + Number(incomes) - Number(expenses); res.json({ initial_investment: Number(settings?.initial_investment || 0), incomes: Number(incomes), expenses: Number(expenses), current }); });
 
 app.post("/api/backups/create", (req, res) => res.json({ ok: true, file: createBackup("manual") }));

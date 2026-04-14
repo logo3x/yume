@@ -1,5 +1,5 @@
 const tabs = ["clientes", "inventario", "compras", "ventas", "envios", "caja", "reportes"];
-let salesChart, profitChart, topProductsChart;
+let salesChart, profitChart, topProductsChart, unifiedChart;
 let allProducts = [], allPurchases = [], allSales = [], allClients = [], allShipments = [], allCashMovements = [];
 
 function today() {
@@ -615,6 +615,8 @@ async function deleteCashMovement(id) {
 }
 
 // ==================== REPORTES ====================
+let reportFilter = { start_date: null, end_date: null };
+
 async function refreshReports() {
   try {
     const s = await api("/api/reports/summary");
@@ -641,6 +643,7 @@ async function refreshReports() {
     if (salesChart) salesChart.destroy();
     if (profitChart) profitChart.destroy();
     if (topProductsChart) topProductsChart.destroy();
+    if (unifiedChart) unifiedChart.destroy();
     
     const chartOptions = { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: true, position: "top" } } };
     
@@ -661,9 +664,73 @@ async function refreshReports() {
       data: { labels: topLabels, datasets: [{ label: "Cantidad Vendida", data: topQty, backgroundColor: "#06b6d4" }] },
       options: { ...chartOptions, indexAxis: "y" }
     });
+    
+    await loadUnifiedChart();
   } catch (err) {
     console.error("Error cargando reportes:", err);
   }
+}
+
+async function loadUnifiedChart() {
+  try {
+    const startDate = document.getElementById("reportStartDate").value;
+    const endDate = document.getElementById("reportEndDate").value;
+    
+    let url = "/api/reports/filtered";
+    const params = [];
+    if (startDate) params.push(`start_date=${startDate}`);
+    if (endDate) params.push(`end_date=${endDate}`);
+    if (params.length > 0) url += "?" + params.join("&");
+    
+    const data = await api(url);
+    
+    const labels = data.salesByDay.map(x => x.day);
+    const salesData = data.salesByDay.map(x => x.total_sales);
+    const profitData = data.salesByDay.map(x => x.total_profit);
+    const qtyData = data.salesByDay.map(x => x.total_qty);
+    
+    if (unifiedChart) unifiedChart.destroy();
+    
+    unifiedChart = new Chart(document.getElementById("unifiedChart"), {
+      type: "bar",
+      data: {
+        labels,
+        datasets: [
+          { label: "Ventas ($)", data: salesData, backgroundColor: "rgba(233, 30, 140, 0.8)", yAxisID: "y" },
+          { label: "Ganancias ($)", data: profitData, backgroundColor: "rgba(124, 58, 237, 0.8)", yAxisID: "y" },
+          { label: "Cantidad", data: qtyData, type: "line", borderColor: "#06b6d4", backgroundColor: "transparent", yAxisID: "y1", tension: 0.4 }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: "index", intersect: false },
+        plugins: {
+          legend: { display: true, position: "top" },
+          tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${money(ctx.raw)}` } }
+        },
+        scales: {
+          y: { type: "linear", display: true, position: "left", title: { display: true, text: "Pesos ($)" } },
+          y1: { type: "linear", display: true, position: "right", title: { display: true, text: "Cantidad" }, grid: { drawOnChartArea: false } }
+        }
+      }
+    });
+  } catch (err) {
+    console.error("Error cargando gráfico unificado:", err);
+  }
+}
+
+function applyReportFilter() {
+  const startDate = document.getElementById("reportStartDate").value;
+  const endDate = document.getElementById("reportEndDate").value;
+  if (!startDate && !endDate) { showToast("Selecciona al menos una fecha", "info"); return; }
+  loadUnifiedChart();
+}
+
+function clearReportFilter() {
+  document.getElementById("reportStartDate").value = "";
+  document.getElementById("reportEndDate").value = "";
+  loadUnifiedChart();
 }
 
 // ==================== BACKUPS ====================
