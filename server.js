@@ -69,6 +69,7 @@ async function initDb() {
   await query(`CREATE TABLE IF NOT EXISTS modules (id SERIAL PRIMARY KEY, key TEXT NOT NULL UNIQUE, name TEXT NOT NULL, icon TEXT DEFAULT '')`);
   await query(`CREATE TABLE IF NOT EXISTS roles (id SERIAL PRIMARY KEY, name TEXT NOT NULL UNIQUE, is_admin INTEGER DEFAULT 0)`);
   await query(`CREATE TABLE IF NOT EXISTS users (id SERIAL PRIMARY KEY, username TEXT NOT NULL UNIQUE, password_hash TEXT NOT NULL, salt TEXT NOT NULL, role_id INTEGER DEFAULT 2, is_active INTEGER DEFAULT 1, created_at TIMESTAMP DEFAULT NOW())`);
+  await query(`CREATE TABLE IF NOT EXISTS user_sessions (id SERIAL PRIMARY KEY, user_id INTEGER NOT NULL REFERENCES users(id), token TEXT NOT NULL UNIQUE, expires_at TIMESTAMP NOT NULL, created_at TIMESTAMP DEFAULT NOW())`);
   await query(`CREATE TABLE IF NOT EXISTS clients (id SERIAL PRIMARY KEY, name TEXT NOT NULL, phone TEXT, address TEXT, city TEXT, created_at TIMESTAMP DEFAULT NOW())`);
   await query(`CREATE TABLE IF NOT EXISTS products (id SERIAL PRIMARY KEY, code TEXT NOT NULL UNIQUE, name TEXT NOT NULL, category TEXT, description TEXT, features TEXT, stock INTEGER NOT NULL DEFAULT 0, status TEXT NOT NULL DEFAULT 'Disponible', entry_date TEXT NOT NULL, supplier TEXT, photo_path TEXT, purchase_price REAL NOT NULL DEFAULT 0, extra_costs REAL NOT NULL DEFAULT 0, total_real_cost REAL NOT NULL DEFAULT 0, margin_percent REAL NOT NULL DEFAULT 30, sale_price REAL NOT NULL DEFAULT 0, created_at TIMESTAMP DEFAULT NOW())`);
   await query(`CREATE TABLE IF NOT EXISTS purchases (id SERIAL PRIMARY KEY, product_id INTEGER NOT NULL REFERENCES products(id), quantity INTEGER NOT NULL, purchase_price REAL NOT NULL, supplier TEXT, shipping_cost REAL NOT NULL DEFAULT 0, purchase_date TEXT NOT NULL, total_invested REAL NOT NULL)`);
@@ -76,22 +77,8 @@ async function initDb() {
   await query(`CREATE TABLE IF NOT EXISTS shipments (id SERIAL PRIMARY KEY, sale_id INTEGER, client_name TEXT NOT NULL, client_address TEXT NOT NULL, city TEXT NOT NULL, shipping_value REAL NOT NULL DEFAULT 0, transport_company TEXT, status TEXT NOT NULL DEFAULT 'Pendiente', created_at TIMESTAMP DEFAULT NOW())`);
   await query(`CREATE TABLE IF NOT EXISTS cash_movements (id SERIAL PRIMARY KEY, movement_date TEXT NOT NULL, type TEXT NOT NULL CHECK(type IN ('Ingreso','Egreso')), category TEXT NOT NULL, amount REAL NOT NULL, notes TEXT)`);
 
-  const modules = [
-    { key: "clientes", name: "Clientes", icon: "👥" },
-    { key: "inventario", name: "Inventario", icon: "📦" },
-    { key: "compras", name: "Compras", icon: "🛒" },
-    { key: "ventas", name: "Ventas", icon: "💰" },
-    { key: "envios", name: "Envíos", icon: "🚚" },
-    { key: "caja", name: "Caja", icon: "💼" },
-    { key: "reportes", name: "Reportes", icon: "📊" },
-    { key: "admin", name: "Administración", icon: "⚙️" }
-  ];
-  for (const m of modules) {
-    await query(`INSERT INTO modules (key, name, icon) VALUES ($1, $2, $3) ON CONFLICT (key) DO NOTHING`, [m.key, m.name, m.icon]);
-  }
-  await query(`INSERT INTO roles (id, name, is_admin) VALUES (1, 'Administrador', 1) ON CONFLICT DO NOTHING`);
-  await query(`INSERT INTO roles (id, name, is_admin) VALUES (2, 'Gerente', 0) ON CONFLICT DO NOTHING`);
-  await query(`INSERT INTO roles (id, name, is_admin) VALUES (3, 'Vendedor', 0) ON CONFLICT DO NOTHING`);
+  await query(`INSERT INTO roles (id, name, is_admin) VALUES (1, 'Administrador', 1), (2, 'Gerente', 0), (3, 'Vendedor', 0) ON CONFLICT (id) DO NOTHING`);
+  await query(`INSERT INTO modules (key, name, icon) VALUES ('clientes', 'Clientes', '👥'), ('inventario', 'Inventario', '📦'), ('compras', 'Compras', '🛒'), ('ventas', 'Ventas', '💰'), ('envios', 'Envíos', '🚚'), ('caja', 'Caja', '💼'), ('reportes', 'Reportes', '📊'), ('admin', 'Administración', '⚙️') ON CONFLICT (key) DO NOTHING`);
 }
 
 function hashPassword(password, salt) {
