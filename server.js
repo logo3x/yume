@@ -9,7 +9,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || "postgresql://postgres:NpG_F?/BQWuK8U#@db.fkfcjttsdayflggazgrc.supabase.co:5432/postgres",
+  connectionString: process.env.DATABASE_URL || "postgresql://postgres:NpG_F%3F%2FBQWuK8U%23@db.fkfcjttsdayflggazgrc.supabase.co:5432/postgres",
   ssl: { rejectUnauthorized: false },
   max: 10,
   idleTimeoutMillis: 30000,
@@ -534,10 +534,12 @@ async function startServer() {
   } catch (e) { console.log("Dir error:", e.message); }
   
   try {
+    await pool.query("SELECT 1");
+    console.log("Database connected successfully");
     await initDb();
-    console.log("Database connected and initialized");
+    console.log("Database tables initialized");
   } catch (e) {
-    console.error("DB init error:", e);
+    console.error("DB connection error:", e.message);
   }
   
   app.listen(PORT, () => console.log(`Servidor corriendo en http://localhost:${PORT}`));
