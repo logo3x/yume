@@ -601,6 +601,38 @@
       </div>
       <div id="usersTable" class="table-container"></div>
     </div>
+
+    <div class="card" style="background:linear-gradient(135deg,#fef3c7,#fde68a);border:2px solid #f59e0b;">
+      <div class="card-header">
+        <h2 class="card-title" style="color:#92400e;"><span class="icon">💾</span> Exportar / Importar Datos</h2>
+      </div>
+      <p style="color:#92400e;margin-bottom:16px;font-size:0.9rem;">⚠️ Exporta tus datos regularmente. Los datos se pierden si Render reinicia.</p>
+      
+      <div style="margin-bottom:16px;">
+        <h3 style="font-size:1rem;margin-bottom:12px;color:#92400e;">📤 Exportar CSV</h3>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;">
+          <button onclick="exportData('products')" class="btn btn-sm" style="background:#e91e8c;color:white;">📦 Productos</button>
+          <button onclick="exportData('clients')" class="btn btn-sm" style="background:#7c3aed;color:white;">👥 Clientes</button>
+          <button onclick="exportData('sales')" class="btn btn-sm" style="background:#06b6d4;color:white;">💰 Ventas</button>
+          <button onclick="exportData('purchases')" class="btn btn-sm" style="background:#10b981;color:white;">🛒 Compras</button>
+          <button onclick="exportData('shipments')" class="btn btn-sm" style="background:#f59e0b;color:white;">🚚 Envíos</button>
+          <button onclick="exportData('cash_movements')" class="btn btn-sm" style="background:#64748b;color:white;">💼 Caja</button>
+        </div>
+      </div>
+
+      <div>
+        <h3 style="font-size:1rem;margin-bottom:12px;color:#92400e;">📥 Importar CSV</h3>
+        <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;">
+          <select id="importType" style="max-width:180px;">
+            <option value="products">📦 Productos</option>
+            <option value="clients">👥 Clientes</option>
+          </select>
+          <input type="file" id="importFile" accept=".csv" style="max-width:250px;">
+          <button onclick="importData()" class="btn btn-sm" style="background:#10b981;color:white;">Importar</button>
+        </div>
+        <p style="color:#92400e;margin-top:8px;font-size:0.8rem;">📋 Formato CSV: Primera fila debe ser headers (code,name,stock...)</p>
+      </div>
+    </div>
   </section>
 
   <!-- Edit User Modal -->

@@ -1263,6 +1263,68 @@ async function loadAll() {
   ]);
 }
 
+function exportData(type) {
+  const baseUrl = window.location.origin;
+  window.open(`${baseUrl}/api/export/${type}`, "_blank");
+  showToast(`Exportando ${type}...`);
+}
+
+function parseCsv(text) {
+  const lines = text.split("\n").filter(l => l.trim());
+  if (lines.length < 2) return [];
+  const headers = lines[0].split(",").map(h => h.trim().replace(/^"|"$/g, "").replace(/""/g, '"'));
+  return lines.slice(1).map(line => {
+    const values = [];
+    let current = "";
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+      const c = line[i];
+      if (c === '"') {
+        if (inQuotes && line[i+1] === '"') { current += '"'; i++; }
+        else inQuotes = !inQuotes;
+      } else if (c === "," && !inQuotes) {
+        values.push(current.trim());
+        current = "";
+      } else {
+        current += c;
+      }
+    }
+    values.push(current.trim());
+    const obj = {};
+    headers.forEach((h, i) => obj[h] = values[i] || "");
+    return obj;
+  });
+}
+
+async function importData() {
+  const type = document.getElementById("importType").value;
+  const fileInput = document.getElementById("importFile");
+  const file = fileInput.files[0];
+  
+  if (!file) { showToast("Selecciona un archivo CSV", "error"); return; }
+  
+  try {
+    const text = await file.text();
+    const data = parseCsv(text);
+    
+    if (data.length === 0) { showToast("Archivo vacío o formato inválido", "error"); return; }
+    
+    const result = await api(`/api/import/${type}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ data })
+    });
+    
+    showToast(`Importados: ${result.imported} registros`);
+    fileInput.value = "";
+    
+    if (type === "products") refreshProducts();
+    else if (type === "clients") refreshClients();
+  } catch (err) {
+    showToast("Error al importar: " + err.message, "error");
+  }
+}
+
 async function initAuth() {
   const overlay = document.getElementById("authOverlay");
   const bootstrapForm = document.getElementById("bootstrapForm");

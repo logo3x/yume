@@ -491,6 +491,88 @@ app.get("/api/cash/summary", (req, res) => { const settings = getOne("SELECT * F
 app.post("/api/backups/create", (req, res) => res.json({ ok: true, file: createBackup("manual") }));
 app.get("/api/backups", (req, res) => res.json(fs.readdirSync(BACKUP_DIR).filter(f => f.endsWith(".db")).map(f => { const stat = fs.statSync(path.join(BACKUP_DIR, f)); return { file: f, size: stat.size, updated_at: stat.mtime.toISOString(), url: `/backups/${f}` }; }).sort((a, b) => b.updated_at.localeCompare(a.updated_at))));
 
+function escapeCsv(val) {
+  if (val === null || val === undefined) return "";
+  const str = String(val);
+  if (str.includes(",") || str.includes('"') || str.includes("\n")) {
+    return `"${str.replace(/"/g, '""')}"`;
+  }
+  return str;
+}
+
+function toCsv(headers, rows) {
+  const headerLine = headers.map(escapeCsv).join(",");
+  const dataLines = rows.map(row => headers.map(h => escapeCsv(row[h])).join(","));
+  return [headerLine, ...dataLines].join("\n");
+}
+
+app.get("/api/export/:type", (req, res) => {
+  const type = req.params.type;
+  const tables = {
+    products: { headers: ["id", "code", "name", "category", "description", "features", "stock", "status", "entry_date", "supplier", "purchase_price", "extra_costs", "total_real_cost", "margin_percent", "sale_price"], query: "SELECT * FROM products ORDER BY id" },
+    clients: { headers: ["id", "name", "phone", "address", "city", "created_at"], query: "SELECT * FROM clients ORDER BY id" },
+    sales: { headers: ["id", "sale_date", "product_id", "quantity", "sale_price", "client_id", "payment_method", "includes_shipping", "shipping_value", "total_amount", "total_cost", "profit"], query: "SELECT * FROM sales ORDER BY id" },
+    purchases: { headers: ["id", "product_id", "quantity", "purchase_price", "supplier", "shipping_cost", "purchase_date", "total_invested"], query: "SELECT * FROM purchases ORDER BY id" },
+    shipments: { headers: ["id", "sale_id", "client_name", "client_address", "city", "shipping_value", "transport_company", "status", "created_at"], query: "SELECT * FROM shipments ORDER BY id" },
+    cash_movements: { headers: ["id", "movement_date", "type", "category", "amount", "notes"], query: "SELECT * FROM cash_movements ORDER BY id" },
+    all: { headers: ["table", "id", "data"], query: null }
+  };
+  
+  if (!tables[type]) return res.status(400).json({ error: "Tipo inválido" });
+  
+  if (type === "all") {
+    const allData = {};
+    for (const t of ["products", "clients", "sales", "purchases", "shipments", "cash_movements"]) {
+      allData[t] = getAll(`SELECT * FROM ${t} ORDER BY id`);
+    }
+    return res.json(allData);
+  }
+  
+  const t = tables[type];
+  const rows = getAll(t.query);
+  const csv = toCsv(t.headers, rows);
+  
+  res.setHeader("Content-Type", "text/csv; charset=utf-8");
+  res.setHeader("Content-Disposition", `attachment; filename="${type}_${new Date().toISOString().slice(0,10)}.csv"`);
+  res.send("\ufeff" + csv);
+});
+
+app.post("/api/import/:type", (req, res) => {
+  const type = req.params.type;
+  const { data } = req.body;
+  
+  if (!data || !Array.isArray(data)) return res.status(400).json({ error: "Datos inválidos" });
+  
+  let imported = 0;
+  let errors = [];
+  
+  try {
+    for (const row of data) {
+      if (type === "products") {
+        const exists = getOne("SELECT id FROM products WHERE code = ?", [row.code]);
+        if (exists) {
+          runQuery(`UPDATE products SET name = ?, category = ?, description = ?, features = ?, stock = ?, status = ?, entry_date = ?, supplier = ?, purchase_price = ?, extra_costs = ?, total_real_cost = ?, margin_percent = ?, sale_price = ? WHERE code = ?`,
+            [row.name, row.category || "", row.description || "", row.features || "", row.stock || 0, row.status || "Disponible", row.entry_date, row.supplier || "", row.purchase_price || 0, row.extra_costs || 0, row.total_real_cost || 0, row.margin_percent || 30, row.sale_price || 0, row.code]);
+        } else {
+          runQuery(`INSERT INTO products (code, name, category, description, features, stock, status, entry_date, supplier, purchase_price, extra_costs, total_real_cost, margin_percent, sale_price) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [row.code, row.name, row.category || "", row.description || "", row.features || "", row.stock || 0, row.status || "Disponible", row.entry_date, row.supplier || "", row.purchase_price || 0, row.extra_costs || 0, row.total_real_cost || 0, row.margin_percent || 30, row.sale_price || 0]);
+        }
+        imported++;
+      } else if (type === "clients") {
+        const exists = getOne("SELECT id FROM clients WHERE name = ? AND phone = ?", [row.name, row.phone || ""]);
+        if (!exists) {
+          runQuery("INSERT INTO clients (name, phone, address, city) VALUES (?, ?, ?, ?)", [row.name, row.phone || "", row.address || "", row.city || ""]);
+          imported++;
+        }
+      }
+    }
+  } catch (e) {
+    errors.push(e.message);
+  }
+  
+  res.json({ ok: true, imported, errors });
+});
+
 app.use(express.static(path.join(__dirname, "public")));
 app.use((req, res) => { if (req.path.startsWith("/api/")) res.status(404).json({ error: "Ruta no encontrada" }); else res.sendFile(path.join(__dirname, "public", "index.html")); });
 app.use((err, req, res, next) => { console.error("Error:", err); res.status(500).json({ error: "Error interno del servidor" }); });
