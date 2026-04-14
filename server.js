@@ -7,12 +7,15 @@ const Database = require("better-sqlite3");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const DB_PATH = path.join(__dirname, "negocio.db");
-const BACKUP_DIR = path.join(__dirname, "backups");
+const IS_RENDER = process.env.RENDER === "true";
+const DATA_DIR = IS_RENDER ? "/data" : __dirname;
+const DB_PATH = path.join(DATA_DIR, "negocio.db");
+const BACKUP_DIR = path.join(DATA_DIR, "backups");
 const db = new Database(DB_PATH);
 
-if (!fs.existsSync(path.join(__dirname, "uploads"))) fs.mkdirSync(path.join(__dirname, "uploads"));
-if (!fs.existsSync(BACKUP_DIR)) fs.mkdirSync(BACKUP_DIR);
+const UPLOADS_DIR = path.join(DATA_DIR, "uploads");
+if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+if (!fs.existsSync(BACKUP_DIR)) fs.mkdirSync(BACKUP_DIR, { recursive: true });
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, "uploads/"),
@@ -24,13 +27,20 @@ app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
 
 app.use((req, res, next) => {
-  res.header("Access-Control-Allow-Origin", "http://localhost:3000");
+  const allowedOrigins = [
+    "http://localhost:3000",
+    "https://yume.onrender.com"
+  ];
+  const origin = req.headers.origin;
+  if (allowedOrigins.includes(origin) || !origin) {
+    res.header("Access-Control-Allow-Origin", origin || "*");
+  }
   res.header("Access-Control-Allow-Credentials", "true");
   res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
   next();
 });
 
-app.use("/uploads", express.static(path.join(__dirname, "uploads"), {
+app.use("/uploads", express.static(UPLOADS_DIR, {
   setHeaders: (res) => {
     res.setHeader("Access-Control-Allow-Origin", "*");
     res.setHeader("Cache-Control", "public, max-age=31536000");
@@ -1000,7 +1010,7 @@ app.get("/api/backups", (req, res) => {
 // ARCHIVOS ESTATICOS (siempre al final)
 // ============================================
 
-app.use(express.static(path.join(__dirname, "../htdocs")));
+app.use(express.static(path.join(__dirname, "public")));
 
 // Manejo de errores 404 y 500
 app.use((req, res) => {

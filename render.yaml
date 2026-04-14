@@ -1,0 +1,17 @@
+database:
+  name: yume-db
+  plan: free
+
+services:
+  - type: web
+    name: yume
+    env: node
+    plan: free
+    region: oregon
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/auth/status
+    disk:
+      name: data
+      mountPath: /data
+      sizeGB: 1
