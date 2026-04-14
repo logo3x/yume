@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Control de Negocio | Yume</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <!-- Auth Overlay -->
+  <div id="authOverlay" class="overlay">
+    <div class="auth-card">
+      <div class="logo-icon" style="width:64px;height:64px;font-size:32px;margin:0 auto 16px;">🎀</div>
+      <h2>Bienvenido</h2>
+      <p id="authMessage">Configura tu cuenta para comenzar</p>
+      <form id="bootstrapForm" style="display:none;">
+        <input name="username" placeholder="Usuario administrador" required>
+        <input name="password" type="password" placeholder="Contraseña (mínimo 6 caracteres)" required>
+        <button type="submit" class="btn btn-primary" style="width:100%;">Crear Cuenta</button>
+      </form>
+      <form id="loginForm" style="display:none;">
+        <input name="username" placeholder="Usuario" required>
+        <input name="password" type="password" placeholder="Contraseña" required>
+        <button type="submit" class="btn btn-primary" style="width:100%;">Ingresar</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Header -->
+  <header>
+    <div class="header-content">
+      <div class="logo-area">
+        <div class="logo-icon">🎀</div>
+        <div class="header-title">
+          <h1>Control de Negocio</h1>
+          <span>Gestión integral de tu empresa</span>
+        </div>
+      </div>
+      <div class="user-area">
+        <span class="user-info" id="whoami"></span>
+        <button id="logoutBtn" class="btn btn-secondary" style="background:rgba(255,255,255,0.2);color:white;border-color:rgba(255,255,255,0.3);">Cerrar sesión</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main>
+    <!-- Tabs Navigation -->
+    <div class="tabs-container" id="tabs">
+      <button class="tab-btn active" data-tab="clientes"><span class="icon">👥</span> Clientes</button>
+      <button class="tab-btn" data-tab="inventario"><span class="icon">📦</span> Inventario</button>
+      <button class="tab-btn" data-tab="compras"><span class="icon">🛒</span> Compras</button>
+      <button class="tab-btn" data-tab="ventas"><span class="icon">💰</span> Ventas</button>
+      <button class="tab-btn" data-tab="envios"><span class="icon">🚚</span> Envíos</button>
+      <button class="tab-btn" data-tab="caja"><span class="icon">💼</span> Caja</button>
+      <button class="tab-btn" data-tab="reportes"><span class="icon">📊</span> Reportes</button>
+      <button class="tab-btn" id="adminTab" data-tab="admin" style="display:none;" onclick="switchToTab('admin'); return false;"><span class="icon">⚙️</span> Admin</button>
+    </div>
+
+    <!-- Clientes Tab -->
+    <section id="clientes" class="tab active">
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title"><span class="icon">👥</span> Nuevo Cliente</h2>
+          <button type="button" class="btn btn-secondary" onclick="resetClientForm()"><span>🔄</span> Limpiar</button>
+        </div>
+        <form id="clientForm">
+          <input type="hidden" name="id" id="clientId">
+          <div class="form-grid">
+            <input name="name" id="clientName" placeholder="Nombre completo" required>
+            <input name="phone" id="clientPhone" placeholder="Teléfono">
+            <input name="address" id="clientAddress" placeholder="Dirección">
+            <input name="city" id="clientCity" placeholder="Ciudad">
+          </div>
+          <button type="submit" class="btn btn-primary"><span>💾</span> <span id="clientBtnText">Guardar Cliente</span></button>
+        </form>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title"><span class="icon">📋</span> Clientes</h2>
+        </div>
+        <input type="text" id="clientSearch" placeholder="🔍 Buscar cliente..." style="margin-bottom:12px;">
+        <div id="clientsTable" class="table-container"></div>
+      </div>
+    </section>
+
+    <!-- Inventario Tab -->
+    <section id="inventario" class="tab">
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title"><span class="icon">📦</span> Nuevo Producto</h2>
+        </div>
+        <form id="productForm" enctype="multipart/form-data">
+          <input type="hidden" name="id" id="productId">
+          <div class="form-grid">
+            <input name="code" placeholder="Código único del producto" required>
+            <input name="name" placeholder="Nombre del producto" required>
+            <input name="category" placeholder="Categoría">
+            <input name="supplier" placeholder="Proveedor">
+            <input name="entry_date" type="date" required>
+            <input name="stock" type="number" placeholder="Stock inicial" min="0" required>
+            <input name="purchase_price" type="number" step="0.01" placeholder="Precio de compra" required>
+            <input name="extra_costs" type="number" step="0.01" placeholder="Costos adicionales" value="0">
+            <input name="margin_percent" type="number" step="0.01" placeholder="% Ganancia" value="30">
+            <input name="photo" type="file" accept="image/*">
+          </div>
+          <div class="form-grid">
+            <textarea name="description" placeholder="Descripción del producto"></textarea>
+            <textarea name="features" placeholder="Características: color, tamaño, etc."></textarea>
+          </div>
+          <button type="submit" class="btn btn-primary"><span>💾</span> Guardar Producto</button>
+        </form>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title"><span class="icon">📋</span> Inventario</h2>
+        </div>
+        <input type="text" id="productSearch" placeholder="🔍 Buscar producto..." style="margin-bottom:12px;">
+        <div id="stockAlert" class="alert alert-warning" style="display:none;"></div>
+        <div id="productsTable" class="table-container"></div>
+      </div>
+    </section>
+
+    <!-- Compras Tab -->
+    <section id="compras" class="tab">
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title"><span class="icon">🛒</span> Registrar Compra</h2>
+        </div>
+        <form id="purchaseForm">
+          <div class="form-grid">
+            <select name="product_id" id="purchaseProduct" required>
+              <option value="">Seleccionar producto...</option>
+            </select>
+            <input name="quantity" type="number" min="1" placeholder="Cantidad" required>
+            <input name="purchase_price" type="number" step="0.01" placeholder="Precio de compra" required>
+            <input name="supplier" placeholder="Proveedor">
+            <input name="shipping_cost" type="number" step="0.01" placeholder="Costo de envío" value="0">
+            <input name="purchase_date" type="date" required>
+          </div>
+          <button type="submit" class="btn btn-primary"><span>💾</span> Guardar Compra</button>
+        </form>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title"><span class="icon">📋</span> Historial de Compras</h2>
+        </div>
+        <input type="text" id="purchaseSearch" placeholder="🔍 Buscar compra..." style="margin-bottom:12px;">
+        <div id="purchasesTable" class="table-container"></div>
+      </div>
+    </section>
+
+    <!-- Ventas Tab -->
+    <section id="ventas" class="tab">
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title"><span class="icon">💰</span> Registrar Venta</h2>
+        </div>
+        <form id="saleForm">
+          <div class="form-grid">
+            <input name="sale_date" type="date" required>
+            <select name="product_id" id="saleProduct" required>
+              <option value="">Seleccionar producto...</option>
+            </select>
+            <input name="quantity" type="number" min="1" placeholder="Cantidad" required>
+            <input name="sale_price" type="number" step="0.01" placeholder="Precio de venta unitario" required>
+            <select name="client_id" id="saleClient">
+              <option value="">Cliente (opcional)</option>
+            </select>
+            <select name="payment_method" required>
+              <option value="Efectivo">💵 Efectivo</option>
+              <option value="Transferencia">🏦 Transferencia</option>
+              <option value="Nequi">📱 Nequi</option>
+              <option value="Daviplata">📱 Daviplata</option>
+            </select>
+            <select name="includes_shipping">
+              <option value="0">🚫 Sin envío</option>
+              <option value="1">🚚 Incluye envío</option>
+            </select>
+            <input name="shipping_value" type="number" step="0.01" placeholder="Valor del envío" value="0">
+          </div>
+          <button type="submit" class="btn btn-primary"><span>💾</span> Registrar Venta</button>
+        </form>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title"><span class="icon">📋</span> Historial de Ventas</h2>
+        </div>
+        <input type="text" id="saleSearch" placeholder="🔍 Buscar venta..." style="margin-bottom:12px;">
+        <div id="salesTable" class="table-container"></div>
+      </div>
+    </section>
+
+    <!-- Envíos Tab -->
+    <section id="envios" class="tab">
+      <!-- Stats -->
+      <div class="metrics-grid" id="shipmentStats">
+        <div class="metric-card warning">
+          <div class="metric-label">Pendientes</div>
+          <div class="metric-value" id="statPending">0</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Enviados</div>
+          <div class="metric-value" id="statSent">0</div>
+        </div>
+        <div class="metric-card success">
+          <div class="metric-label">Entregados</div>
+          <div class="metric-value" id="statDelivered">0</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title"><span class="icon">🚚</span> Registrar Envío</h2>
+          <button type="button" class="btn btn-secondary" onclick="resetShipmentForm()"><span>🔄</span> Limpiar</button>
+        </div>
+        <form id="shipmentForm">
+          <input type="hidden" name="id" id="shipmentId">
+          <div class="form-grid">
+            <input name="sale_id" type="number" placeholder="ID Venta (opcional)">
+            <input name="client_name" id="shipmentClientName" placeholder="Nombre del cliente" required>
+            <input name="client_address" id="shipmentAddress" placeholder="Dirección de entrega" required>
+            <input name="city" id="shipmentCity" placeholder="Ciudad" required>
+            <input name="shipping_value" id="shipmentValue" type="number" step="0.01" placeholder="Valor del envío" value="0">
+            <input name="transport_company" id="shipmentTransport" placeholder="Transportadora">
+            <select name="status" id="shipmentStatus">
+              <option value="Pendiente">⏳ Pendiente</option>
+              <option value="Enviado">🚚 Enviado</option>
+              <option value="Entregado">✅ Entregado</option>
+            </select>
+          </div>
+          <div class="flex gap-2" style="margin-top:16px;">
+            <button type="submit" class="btn btn-primary"><span>💾</span> <span id="shipmentBtnText">Guardar Envío</span></button>
+            <button type="button" class="btn btn-secondary" id="cancelEditBtn" style="display:none;" onclick="cancelShipmentEdit()"><span>✖</span> Cancelar</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title"><span class="icon">📋</span> Control de Envíos</h2>
+        </div>
+        <input type="text" id="shipmentSearch" placeholder="🔍 Buscar envío..." style="margin-bottom:12px;">
+        <div id="shipmentsTable" class="table-container"></div>
+      </div>
+    </section>
+
+    <!-- Caja Tab -->
+    <section id="caja" class="tab">
+      <div class="metrics-grid">
+        <div class="metric-card">
+          <div class="metric-label">Inversión Inicial</div>
+          <div class="metric-value" id="metricInvestment">$0</div>
+        </div>
+        <div class="metric-card success">
+          <div class="metric-label">Ingresos Totales</div>
+          <div class="metric-value" id="metricIncomes">$0</div>
+        </div>
+        <div class="metric-card danger">
+          <div class="metric-label">Egresos Totales</div>
+          <div class="metric-value" id="metricExpenses">$0</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Dinero en Caja</div>
+          <div class="metric-value" id="metricCurrent">$0</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title"><span class="icon">⚙️</span> Configuración General</h2>
+        </div>
+        <div class="form-grid">
+          <div>
+            <label style="font-size:0.85rem;color:var(--text-muted);margin-bottom:4px;display:block;">% Ganancia por defecto</label>
+            <p class="text-sm text-muted" style="margin-bottom:8px;">Se aplica automáticamente al crear nuevos productos</p>
+          </div>
+          <div>
+            <label style="font-size:0.85rem;color:var(--text-muted);margin-bottom:4px;display:block;">Dinero inicial en caja</label>
+            <p class="text-sm text-muted" style="margin-bottom:8px;">Tu inversión inicial (para calcular ganancias)</p>
+          </div>
+        </div>
+        <form id="settingsForm" style="margin-top:16px;">
+          <div class="form-grid">
+            <input name="default_margin_percent" type="number" step="0.01" placeholder="Ej: 30" required>
+            <input name="initial_investment" type="number" step="0.01" placeholder="Ej: 1000000">
+          </div>
+          <button type="submit" class="btn btn-primary" style="margin-top:16px;"><span>💾</span> Guardar Configuración</button>
+        </form>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title"><span class="icon">💸</span> Movimiento Manual</h2>
+        </div>
+        <form id="cashForm">
+          <div class="form-grid">
+            <input name="movement_date" type="date" required>
+            <select name="type">
+              <option value="Ingreso">📈 Ingreso</option>
+              <option value="Egreso">📉 Egreso</option>
+            </select>
+            <input name="category" placeholder="Categoría" required>
+            <input name="amount" type="number" step="0.01" placeholder="Monto" required>
+            <input name="notes" placeholder="Notas (opcional)">
+          </div>
+          <button type="submit" class="btn btn-primary"><span>💾</span> Registrar Movimiento</button>
+        </form>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title"><span class="icon">📋</span> Historial de Caja</h2>
+        </div>
+        <input type="text" id="cashSearch" placeholder="🔍 Buscar movimiento..." style="margin-bottom:12px;">
+        <div class="form-grid" style="margin-bottom:12px;">
+          <input type="date" id="cashStartDate" placeholder="Fecha inicio">
+          <input type="date" id="cashEndDate" placeholder="Fecha fin">
+          <select id="cashTypeFilter">
+            <option value="all">Todos</option>
+            <option value="Ingreso">📈 Ingresos</option>
+            <option value="Egreso">📉 Egresos</option>
+          </select>
+          <select id="cashPerPage">
+            <option value="10">10 por página</option>
+            <option value="25" selected>25 por página</option>
+            <option value="50">50 por página</option>
+            <option value="100">100 por página</option>
+          </select>
+        </div>
+        <div id="cashTable" class="table-container"></div>
+        <div id="cashTotals" style="margin-top:16px;padding:16px;background:linear-gradient(135deg,var(--primary-light),var(--secondary-light));border-radius:var(--radius-sm);display:flex;justify-content:space-around;flex-wrap:wrap;gap:16px;"></div>
+        <div id="cashPagination" style="display:flex;justify-content:center;gap:8px;margin-top:16px;"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title"><span class="icon">🔐</span> Backups</h2>
+          <button id="backupNowBtn" class="btn btn-secondary"><span>💾</span> Crear Respaldo Ahora</button>
+        </div>
+        <div id="backupTable"></div>
+      </div>
+    </section>
+
+    <!-- Reportes Tab -->
+    <section id="reportes" class="tab">
+      <div class="metrics-grid" id="reportMetrics"></div>
+
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title"><span class="icon">📊</span> Productos Agotados</h2>
+        </div>
+        <div id="outOfStock"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title"><span class="icon">📈</span> Ventas por Mes</h2>
+        </div>
+        <div class="chart-container">
+          <canvas id="salesChart"></canvas>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title"><span class="icon">💹</span> Ganancias por Mes</h2>
+        </div>
+        <div class="chart-container">
+          <canvas id="profitChart"></canvas>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title"><span class="icon">🏆</span> Productos Más Vendidos</h2>
+        </div>
+        <div class="chart-container">
+          <canvas id="topProductsChart"></canvas>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Edit Purchase Modal -->
+  <div id="editPurchaseModal" class="overlay">
+    <div class="auth-card" style="max-width:500px;">
+      <h2 style="color:var(--primary);margin-bottom:16px;">✏️ Editar Compra</h2>
+      <div id="editPurchaseInfo" style="background:var(--primary-light);padding:12px;border-radius:var(--radius-sm);margin-bottom:16px;font-weight:500;"></div>
+      <form id="editPurchaseForm">
+        <input type="hidden" name="id" id="editPurchaseId">
+        <div class="form-grid">
+          <div>
+            <label style="font-size:0.85rem;color:var(--text-muted);">Cantidad</label>
+            <input name="quantity" id="editPurchaseQty" type="number" min="1" required>
+          </div>
+          <div>
+            <label style="font-size:0.85rem;color:var(--text-muted);">Precio Compra Unit.</label>
+            <input name="purchase_price" id="editPurchasePrice" type="number" step="0.01" required>
+          </div>
+          <div>
+            <label style="font-size:0.85rem;color:var(--text-muted);">Proveedor</label>
+            <input name="supplier" id="editPurchaseSupplier">
+          </div>
+          <div>
+            <label style="font-size:0.85rem;color:var(--text-muted);">Costo Envío</label>
+            <input name="shipping_cost" id="editPurchaseShip" type="number" step="0.01" value="0">
+          </div>
+          <div>
+            <label style="font-size:0.85rem;color:var(--text-muted);">Fecha</label>
+            <input name="purchase_date" id="editPurchaseDate" type="date" required>
+          </div>
+        </div>
+        <div style="margin-top:12px;padding:12px;background:var(--secondary-light);border-radius:var(--radius-sm);">
+          <strong>Total:</strong> <span id="editPurchaseTotal">$0</span>
+        </div>
+        <div class="flex gap-2" style="margin-top:16px;">
+          <button type="submit" class="btn btn-primary" style="flex:1;"><span>💾</span> Guardar Cambios</button>
+          <button type="button" class="btn btn-secondary" onclick="closeEditPurchaseModal()"><span>✖</span> Cancelar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Edit Sale Modal -->
+  <div id="editSaleModal" class="overlay">
+    <div class="auth-card" style="max-width:500px;">
+      <h2 style="color:var(--primary);margin-bottom:16px;">✏️ Editar Venta</h2>
+      <div id="editSaleInfo" style="background:var(--primary-light);padding:12px;border-radius:var(--radius-sm);margin-bottom:16px;font-weight:500;"></div>
+      <form id="editSaleForm">
+        <input type="hidden" name="id" id="editSaleId">
+        <div class="form-grid">
+          <div>
+            <label style="font-size:0.85rem;color:var(--text-muted);">Fecha Venta</label>
+            <input name="sale_date" id="editSaleDate" type="date" required>
+          </div>
+          <div>
+            <label style="font-size:0.85rem;color:var(--text-muted);">Cantidad</label>
+            <input name="quantity" id="editSaleQty" type="number" min="1" required>
+          </div>
+          <div>
+            <label style="font-size:0.85rem;color:var(--text-muted);">Precio Venta Unit.</label>
+            <input name="sale_price" id="editSalePrice" type="number" step="0.01" required>
+          </div>
+          <div>
+            <label style="font-size:0.85rem;color:var(--text-muted);">Método Pago</label>
+            <select name="payment_method" id="editSalePayment">
+            <option value="Efectivo">💵 Efectivo</option>
+            <option value="Transferencia">🏦 Transferencia</option>
+            <option value="Nequi">📱 Nequi</option>
+            <option value="Daviplata">📱 Daviplata</option>
+          </select>
+          </div>
+          <div>
+            <label style="font-size:0.85rem;color:var(--text-muted);">Incluye Envío</label>
+            <select name="includes_shipping" id="editSaleShipCheck">
+              <option value="0">🚫 Sin envío</option>
+              <option value="1">🚚 Incluye envío</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:0.85rem;color:var(--text-muted);">Valor Envío</label>
+            <input name="shipping_value" id="editSaleShipValue" type="number" step="0.01" value="0">
+          </div>
+        </div>
+        <div style="margin-top:12px;padding:12px;background:var(--secondary-light);border-radius:var(--radius-sm);">
+          <strong>Total:</strong> <span id="editSaleTotal">$0</span> | <strong>Ganancia:</strong> <span id="editSaleProfit">$0</span>
+        </div>
+        <div class="flex gap-2" style="margin-top:16px;">
+          <button type="submit" class="btn btn-primary" style="flex:1;"><span>💾</span> Guardar Cambios</button>
+          <button type="button" class="btn btn-secondary" onclick="closeEditSaleModal()"><span>✖</span> Cancelar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Edit Product Modal -->
+  <div id="editProductModal" class="overlay">
+    <div class="auth-card" style="max-width:600px;max-height:90vh;overflow-y:auto;">
+      <h2 style="color:var(--primary);margin-bottom:16px;">✏️ Editar Producto</h2>
+      <form id="editProductForm">
+        <input type="hidden" name="id" id="editProductId">
+        <input type="hidden" name="keep_photo" value="true">
+        <div class="form-grid">
+          <div>
+            <label style="font-size:0.85rem;color:var(--text-muted);">Código</label>
+            <input name="code" id="editCode" required>
+          </div>
+          <div>
+            <label style="font-size:0.85rem;color:var(--text-muted);">Nombre</label>
+            <input name="name" id="editName" required>
+          </div>
+          <div>
+            <label style="font-size:0.85rem;color:var(--text-muted);">Categoría</label>
+            <input name="category" id="editCategory">
+          </div>
+          <div>
+            <label style="font-size:0.85rem;color:var(--text-muted);">Proveedor</label>
+            <input name="supplier" id="editSupplier">
+          </div>
+          <div>
+            <label style="font-size:0.85rem;color:var(--text-muted);">Fecha Entrada</label>
+            <input name="entry_date" id="editEntryDate" type="date" required>
+          </div>
+          <div>
+            <label style="font-size:0.85rem;color:var(--text-muted);">Stock</label>
+            <input name="stock" id="editStock" type="number" min="0" required>
+          </div>
+          <div>
+            <label style="font-size:0.85rem;color:var(--text-muted);">Precio Compra</label>
+            <input name="purchase_price" id="editProdPurchasePrice" type="number" step="0.01" required>
+          </div>
+          <div>
+            <label style="font-size:0.85rem;color:var(--text-muted);">Costos Adicionales</label>
+            <input name="extra_costs" id="editProdExtraCosts" type="number" step="0.01" value="0">
+          </div>
+          <div>
+            <label style="font-size:0.85rem;color:var(--text-muted);">% Ganancia</label>
+            <input name="margin_percent" id="editProdMarginPercent" type="number" step="0.01" value="30">
+          </div>
+          <div>
+            <label style="font-size:0.85rem;color:var(--text-muted);">Cambiar Foto</label>
+            <input name="photo" type="file" accept="image/*">
+          </div>
+        </div>
+        <div class="form-grid" style="margin-top:12px;">
+          <div>
+            <label style="font-size:0.85rem;color:var(--text-muted);">Descripción</label>
+            <textarea name="description" id="editDescription"></textarea>
+          </div>
+          <div>
+            <label style="font-size:0.85rem;color:var(--text-muted);">Características</label>
+            <textarea name="features" id="editFeatures"></textarea>
+          </div>
+        </div>
+        <div id="editCurrentPhoto" style="margin-top:12px;"></div>
+        <div class="flex gap-2" style="margin-top:16px;">
+          <button type="submit" class="btn btn-primary" style="flex:1;"><span>💾</span> Guardar Cambios</button>
+          <button type="button" class="btn btn-secondary" onclick="closeEditProductModal()"><span>✖</span> Cancelar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Admin Tab -->
+  <section id="admin" class="tab">
+    <div class="card">
+      <div class="card-header">
+        <h2 class="card-title"><span class="icon">👤</span> Crear Usuario</h2>
+      </div>
+      <form id="createUserForm">
+        <div class="form-grid">
+          <input type="text" id="newUserName" placeholder="Nombre de usuario" required>
+          <input type="password" id="newUserPassword" placeholder="Contraseña (min 6 caracteres)" required>
+          <select id="newUserRole" required>
+            <option value="">Seleccionar rol...</option>
+          </select>
+        </div>
+        <button type="submit" class="btn btn-primary" style="margin-top:16px;"><span>➕</span> Crear Usuario</button>
+      </form>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h2 class="card-title"><span class="icon">👥</span> Usuarios del Sistema</h2>
+      </div>
+      <div id="usersTable" class="table-container"></div>
+    </div>
+  </section>
+
+  <!-- Edit User Modal -->
+  <div id="editUserModal" class="overlay">
+    <div class="auth-card" style="max-width:600px;max-height:90vh;overflow-y:auto;">
+      <h2 style="color:var(--primary);margin-bottom:16px;">✏️ Editar Usuario</h2>
+      <form id="editUserForm">
+        <input type="hidden" id="editUserId">
+        <div class="form-grid">
+          <div>
+            <label style="font-size:0.85rem;color:var(--text-muted);">Nombre de Usuario</label>
+            <input type="text" id="editUserName" required>
+          </div>
+          <div>
+            <label style="font-size:0.85rem;color:var(--text-muted);">Nueva Contraseña (dejar vacío para no cambiar)</label>
+            <input type="password" id="editUserPassword" placeholder="Mínimo 6 caracteres">
+          </div>
+          <div>
+            <label style="font-size:0.85rem;color:var(--text-muted);">Rol</label>
+            <select id="editUserRole"></select>
+          </div>
+          <div>
+            <label style="font-size:0.85rem;color:var(--text-muted);">Activo</label>
+            <select id="editUserActive">
+              <option value="1">Sí</option>
+              <option value="0">No</option>
+            </select>
+          </div>
+        </div>
+        <div class="flex gap-2" style="margin-top:16px;">
+          <button type="submit" class="btn btn-primary" style="flex:1;"><span>💾</span> Guardar Cambios</button>
+          <button type="button" class="btn btn-secondary" onclick="closeEditUserModal()"><span>✖</span> Cancelar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Permissions Modal -->
+  <div id="permissionsModal" class="overlay">
+    <div class="auth-card" style="max-width:700px;max-height:90vh;overflow-y:auto;">
+      <h2 style="color:var(--primary);margin-bottom:16px;">🔐 Permisos de Usuario</h2>
+      <p id="permissionsUserName" style="margin-bottom:16px;color:var(--text-muted);"></p>
+      <div id="permissionsList" style="margin-bottom:16px;"></div>
+      <div class="flex gap-2" style="margin-top:16px;">
+        <button type="button" class="btn btn-primary" style="flex:1;" onclick="savePermissions()"><span>💾</span> Guardar Permisos</button>
+        <button type="button" class="btn btn-secondary" onclick="closePermissionsModal()"><span>✖</span> Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
