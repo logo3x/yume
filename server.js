@@ -8,7 +8,7 @@ const { Pool } = require("pg");
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-let pool;
+let pool = null;
 
 function initPool() {
   const dbUrl = process.env.DATABASE_URL;
@@ -16,13 +16,20 @@ function initPool() {
     console.error("DATABASE_URL not set!");
     return null;
   }
-  return new Pool({
-    connectionString: dbUrl,
-    ssl: { rejectUnauthorized: false },
-    max: 5,
-    idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 5000,
-  });
+  try {
+    const p = new Pool({
+      connectionString: dbUrl,
+      ssl: { rejectUnauthorized: false },
+      max: 5,
+      idleTimeoutMillis: 30000,
+      connectionTimeoutMillis: 15000,
+    });
+    p.on('error', (err) => console.error('Pool error:', err.message));
+    return p;
+  } catch (e) {
+    console.error("Failed to create pool:", e.message);
+    return null;
+  }
 }
 
 pool = initPool();
@@ -45,6 +52,16 @@ app.use((req, res, next) => {
   res.header("Access-Control-Allow-Credentials", "true");
   res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
   next();
+});
+
+app.get("/api/health", async (req, res) => {
+  try {
+    if (!pool) throw new Error("Database pool not initialized");
+    const result = await pool.query("SELECT NOW()");
+    res.json({ status: "ok", db: "connected", time: result.rows[0].now });
+  } catch (e) {
+    res.status(500).json({ status: "error", db: "disconnected", error: e.message });
+  }
 });
 
 app.use("/uploads", express.static(path.join(__dirname, "uploads"), {

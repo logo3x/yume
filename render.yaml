@@ -4,8 +4,8 @@ services:
     env: node
     region: oregon
     buildCommand: npm install
-    startCommand: npm start
-    healthCheckPath: /api/auth/status
+    startCommand: node server.js
+    healthCheckPath: /api/health
     envVars:
       - key: DATABASE_URL
-        value: "postgresql://postgres:NpG_F%3F%2FBQWuK8U%23@db.fkfcjttsdayflggazgrc.supabase.co:5432/postgres"
+        sync: false
