@@ -8,15 +8,24 @@ const { Pool } = require("pg");
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || "postgresql://postgres:NpG_F%3F%2FBQWuK8U%23@db.fkfcjttsdayflggazgrc.supabase.co:5432/postgres",
-  ssl: { rejectUnauthorized: false },
-  max: 10,
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 10000,
-});
+let pool;
 
-let db;
+function initPool() {
+  const dbUrl = process.env.DATABASE_URL;
+  if (!dbUrl) {
+    console.error("DATABASE_URL not set!");
+    return null;
+  }
+  return new Pool({
+    connectionString: dbUrl,
+    ssl: { rejectUnauthorized: false },
+    max: 5,
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 5000,
+  });
+}
+
+pool = initPool();
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, path.join(__dirname, "uploads") + "/"),
@@ -520,13 +529,17 @@ async function startServer() {
     if (!fs.existsSync(path.join(__dirname, "backups"))) fs.mkdirSync(path.join(__dirname, "backups"), { recursive: true });
   } catch (e) { console.log("Dir error:", e.message); }
   
-  try {
-    await pool.query("SELECT 1");
-    console.log("Database connected successfully");
-    await initDb();
-    console.log("Database tables initialized");
-  } catch (e) {
-    console.error("DB connection error:", e.message);
+  if (pool) {
+    try {
+      await pool.query("SELECT 1");
+      console.log("Database connected successfully");
+      await initDb();
+      console.log("Database tables initialized");
+    } catch (e) {
+      console.error("DB connection error:", e.message);
+    }
+  } else {
+    console.error("Database pool not initialized - DATABASE_URL may be missing");
   }
   
   app.listen(PORT, () => console.log(`Servidor corriendo en http://localhost:${PORT}`));
