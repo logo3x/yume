@@ -6,6 +6,3 @@ services:
     buildCommand: npm install
     startCommand: node server.js
     healthCheckPath: /api/health
-    envVars:
-      - key: DATABASE_URL
-        sync: false

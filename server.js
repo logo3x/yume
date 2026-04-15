@@ -60,9 +60,20 @@ app.get("/api/health", async (req, res) => {
     const result = await pool.query("SELECT NOW()");
     res.json({ status: "ok", db: "connected", time: result.rows[0].now });
   } catch (e) {
-    res.status(500).json({ status: "error", db: "disconnected", error: e.message });
+    res.json({ status: "degraded", db: "disconnected", error: e.message });
   }
 });
+
+async function safeQuery(sql, params = []) {
+  if (!pool) throw new Error("Database not connected");
+  const client = await pool.connect();
+  try {
+    const result = await client.query(sql, params);
+    return result;
+  } finally {
+    client.release();
+  }
+}
 
 app.use("/uploads", express.static(path.join(__dirname, "uploads"), {
   setHeaders: (res) => {
@@ -73,6 +84,7 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads"), {
 app.use("/backups", express.static(path.join(__dirname, "backups")));
 
 async function query(sql, params = []) {
+  if (!pool) throw new Error("Database not connected - check DATABASE_URL");
   const client = await pool.connect();
   try {
     const result = await client.query(sql, params);
@@ -536,8 +548,12 @@ app.use((req, res) => {
 });
 
 app.use((err, req, res, next) => {
-  console.error("Error:", err);
-  res.status(500).json({ error: "Error interno del servidor" });
+  console.error("Server error:", err.message);
+  if (err.message.includes("Database")) {
+    res.status(503).json({ error: "Database unavailable", detail: err.message });
+  } else {
+    res.status(500).json({ error: "Server error", detail: err.message });
+  }
 });
 
 async function startServer() {
@@ -548,18 +564,20 @@ async function startServer() {
   
   if (pool) {
     try {
-      await pool.query("SELECT 1");
+      const result = await pool.query("SELECT 1");
       console.log("Database connected successfully");
       await initDb();
       console.log("Database tables initialized");
     } catch (e) {
       console.error("DB connection error:", e.message);
+      console.error("STACK:", e.stack);
     }
   } else {
-    console.error("Database pool not initialized - DATABASE_URL may be missing");
+    console.error("Database pool not initialized");
+    console.error("DATABASE_URL is:", process.env.DATABASE_URL ? "SET" : "NOT SET");
   }
   
-  app.listen(PORT, () => console.log(`Servidor corriendo en http://localhost:${PORT}`));
+  app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 }
 
 startServer().catch(console.error);
